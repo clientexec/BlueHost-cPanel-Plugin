@@ -21,19 +21,12 @@ class PluginCpanel extends ServerPlugin
 	 */
 	public function setup ( $args )
 	{
-		if ( isset($args['server']['variables']['ServerHostName']) && 
-			isset($args['server']['variables']['plugin_cpanel_Username']) && 
-			isset($args['server']['variables']['plugin_cpanel_Access_Hash']) && 
-			isset($args['server']['variables']['plugin_cpanel_Use_SSL']) ) {	
-			$this->api = new CpanelApi ($args['server']['variables']['ServerHostName'],
-                            $args['server']['variables']['plugin_cpanel_Username'],
-                            $args['server']['variables']['plugin_cpanel_Access_Hash'],
-                            $args['server']['variables']['plugin_cpanel_Use_SSL']);
-
-			$this->api->setupLogger ( $this->logger, 4);
-		} else {
-			throw new Exception('Missing Server Credentials: please fill out all information when editing the server.');
-		}
+            if ( isset($args['server']['variables']['ServerHostName']) && isset($args['server']['variables']['plugin_cpanel_Username']) && isset($args['server']['variables']['plugin_cpanel_Access_Hash']) && isset($args['server']['variables']['plugin_cpanel_Use_SSL']) ) {	
+                $this->api = new CpanelApi($args['server']['variables']['ServerHostName'], $args['server']['variables']['plugin_cpanel_Username'], $args['server']['variables']['plugin_cpanel_Access_Hash'], $args['server']['variables']['plugin_cpanel_Use_SSL']);
+                $this->api->setupLogger ( $this->logger, 4);
+            } else {
+                throw new Exception('Missing Server Credentials: please fill out all information when editing the server.');
+            }
 	}
 
 	/**
@@ -45,28 +38,25 @@ class PluginCpanel extends ServerPlugin
 	 */
 	function email_error ( $name, $message, $args )
 	{
-		$error = "cPanel Account ".$name." Failed. ";
-		$error .= "A email with the Details was sent to ". $args['server']['variables']['plugin_cpanel_Failure_E-mail'].'<br /><br />';
+            $error = "cPanel Account ".$name." Failed. ";
+            $error .= "A email with the Details was sent to ". $args['server']['variables']['plugin_cpanel_Failure_E-mail'].'<br /><br />';
 
-		if ( is_array($message) )
-		{
-			$message = implode ( "\n", trim($message) );
-		}
+            if ( is_array($message) ) {
+                $message = implode ( "\n", trim($message) );
+            }
 
-		$this->logger->log(1, 'cPanel Error: '.print_r(array('type' => $name, 'error' => $error, 'message' => $message, 'params' => $args), true));
+            $this->logger->log(1, 'cPanel Error: '.print_r(array('type' => $name, 'error' => $error, 'message' => $message, 'params' => $args), true));
 
-		if ( !empty($args['server']['variables']['plugin_cpanel_Failure_E-mail']) )
-		{
-			$mailGateway = new NE_MailGateway();
-			$mailGateway->mailMessageEmail( $message,
-							   $args['server']['variables']['plugin_cpanel_Failure_E-mail'],
-							   "Cpanel Plugin",
-							   $args['server']['variables']['plugin_cpanel_Failure_E-mail'],
-							   "",
-							   "Cpanel Account ".$name." Failure");
-		}
-
-		return $error.nl2br($message);
+            if ( !empty($args['server']['variables']['plugin_cpanel_Failure_E-mail']) ) {
+                $mailGateway = new NE_MailGateway();
+                $mailGateway->mailMessageEmail( $message,
+                    $args['server']['variables']['plugin_cpanel_Failure_E-mail'],
+                    "Cpanel Plugin",
+                    $args['server']['variables']['plugin_cpanel_Failure_E-mail'],
+                    "",
+                    "Cpanel Account ".$name." Failure");
+            }
+            return $error.nl2br($message);
 	}
 
 	function getVariables()
@@ -199,13 +189,12 @@ class PluginCpanel extends ServerPlugin
      */
     function CheckCpanelPlan($plan, $args)
     {
-	    $this->setup($args);
-	    $packages = $this->api->packages();
-	    if ( is_array($packages) && isset($packages[$plan]) )
-	    {
-		    return true;
-	    }
-	    return false;
+        $this->setup($args);
+        $packages = $this->api->packages();
+        if ( is_array($packages) && isset($packages[$plan]) ) {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -269,24 +258,11 @@ class PluginCpanel extends ServerPlugin
 		$errors[] = 'The cPanel password is blank';
 	}
 
-
 	// Only make the request if there have been no errors so far.
-	if ( count($errors) == 0 )
-	{
-		// if it's an update, skip username existance check
-		// Only perform the request when we are not updating and we are not signinig up.
-		/*if ((!isset($args['isUpdate']) || !$args['isUpdate']) && !NE_SIGNUP) {
-			$accts = $this->api->accounts();
-
-			$i = 1;
-			while (isset($accts[$args['package']['username']])) {
-				$args['package']['username'] = mb_substr($args['package']['username'], 0, 7).$i++;
-			}
-		}*/
-
-		if (strpos($args['package']['password'], $args['package']['username']) !== false) {
-			$errors[] = 'Domain password can\'t contain domain username';
-		}
+	if ( count($errors) == 0 ) {
+            if (strpos($args['package']['password'], $args['package']['username']) !== false) {
+                $errors[] = 'Domain password can\'t contain domain username';
+            }
 	}
 
         // Check if we want to supress errors during signup and just return a valid username
@@ -294,508 +270,383 @@ class PluginCpanel extends ServerPlugin
             return $args['package']['username'];
         } else {
 
-            if ( count($errors) > 0 )
-                    {
-                        $this->logger->log(4, "plugin_cpanel::validate::error: ".print_r($errors,true));
-                            throw new Exception($errors[0]);
+            if ( count($errors) > 0 ) {
+                $this->logger->log(4, "plugin_cpanel::validate::error: ".print_r($errors,true));
+                throw new Exception($errors[0]);
             }
-
             return $args['package']['username'];
         }
     }
 
-	//plugin function called after account is activated
-	function doCreate($args)
-	{
-		$userPackage = new UserPackage($args['userPackageId']);
-		$this->create($this->buildParams($userPackage));
-		return $userPackage->getCustomField("Domain Name") . ' has been created.';
-	}
-
-	/**
-	  * @link http://docs.cpanel.net/twiki/bin/view/AllDocumentation/AutomationIntegration/CreateAccount
-	  * @param <type> $args
-	  * @return NE_Error
-	  */
-	function create($args)
-	{
-		$this->setup($args);
-		$errors = array();
-
-		//if (!$args['plugin_cpanel_Create'] == 1) return;
-		if ( $args['package']['name_on_server'] == null ) {
-			throw new Exception("Cpanel create method: This package is not tied to a Cpanel account");
-		}
-
-		// package add-ons handling
-		if ( isset($args['package']['addons']['DISKSPACE']) ) {
-			@$args['package']['acl']['acl-rslimit-disk'] += ((int)$args['package']['addons']['DISKSPACE']);
-		}
-		if ( isset($args['package']['addons']['BANDWIDTH']) ) {
-			@$args['package']['acl']['acl-rslimit-bw'] += ((int)$args['package']['addons']['BANDWIDTH']) * 1024; // Convert from Gigs to MB
-		}
-		if ( isset($args['package']['is_reseller']) && isset($args['package']['addons']['SSL']) && $args['package']['addons']['SSL'] == 1) {
-			$args['package']['acl']['acl-ssl'] = 1;
-		}
-
-		// Checks if the plan exists.
-		if ( !$this->CheckCpanelPlan($args['package']['name_on_server'], $args) )
-		{
-			$error = "The package '{$args['package']['name_on_server']}' was not found on the server.";
-			$errors[] = $this->email_error('Creation', $error, $args );
-                        throw new Exception($error);
-		}
-
-		// Params array we pass to cPanel server.
-		$params = array();
-		$params['username'] = $args['package']['username'];
-		$params['domain'] = $args['package']['domain_name'];
-		$params['plan'] = urlencode($args['package']['name_on_server']);
-		$params['password'] = $args['package']['password'];
-		// Reseller Limits should not be set on shared hosting accounts
-                //$params['quota'] = @$args['package']['acl']['acl-rslimit-disk'];
-		//$params['bwlimit'] = @$args['package']['acl']['acl-rslimit-bw'];
-		$params['contactemail'] = $args['customer']['email'];
-
-		$request = $this->api->call('createacct', $params);
-
-		if ( $request->result[0]->status != 1 )
-		{
-			$errors[] = $this->email_error('Creation', $request->result[0]->statusmsg, $args);
-		}
-		else if ( $request->result[0]->status == 1 )
-		{
-			// setup the reseller permissions if necessary
-			if ( isset($args['package']['is_reseller']) && $args['package']['is_reseller']== 1 )
-			{
-                                $this->_addReseller($args);
-				$this->_setResellerACLs($args);
-			}
-		}
-		else
-		{
-			$errors[] = "Error connecting to cPanel server";
-		}
-
-		// Rather than returning an error object every time, just return it here.
-		// Need to check if an actual error exists to avoid returning an error object on a success message
-		if ( count($errors) > 0 )
-		{
-			$this->logger->log(4, "plugin_cpanel::create::error: ".print_r($errors,true));
-			throw new Exception ( $errors[0] );
-		}
-		return;
-	}
-
-	function doUpdate($args)
-	{
-		$userPackage = new UserPackage($args['userPackageId']);
-		$this->update($this->buildParams($userPackage, $args));
-		return $userPackage->getCustomField("Domain Name") . ' has been updated.';
-	}
-	
-	function update($args)
-	{
-		$this->setup($args);
-		$args = $this->updateArgs($args);
-		$errors = array();
-		// Loop over changes array
-		foreach ( $args['changes'] as $key => $value ) 
-		{
-			switch ( $key ) 
-			{
-				/**
-				 * Change Username
-				 * @link http://docs.cpanel.net/twiki/bin/view/AllDocumentation/AutomationIntegration/ModifyAccount
-				 */
-				case 'username':
-					$request = $this->api->call('modifyacct', array('user' => $args['package']['username'], 'newuser' => $value));
-					if ( $request->result[0]->status != 1 )
-					{
-						$errors[] = $this->email_error('Username Change', $request->result[0]->statusmsg, $args);
-					}
-					// Internal fix, incase we are also changing the domain name.
-					$args['package']['username'] = $value;
-					break;
-
-				/**
-				 * Change Password
-				 * @link http://docs.cpanel.net/twiki/bin/view/AllDocumentation/AutomationIntegration/ChangePassword
-				 */
-				case 'password':
-					$request = $this->api->call('passwd', array('user' => $args['package']['username'], 'pass' => urlencode($value)));
-					// passwd has a different json struct... 
-					if ( $request->passwd[0]->status != 1 )
-					{
-						$errors[] = $this->email_error('Password Change', $request->passwd[0]->statusmsg, $args);
-					}
-					break;
-
-				/**
-				 * Change Domain Name
-				 * @link http://docs.cpanel.net/twiki/bin/view/AllDocumentation/AutomationIntegration/ModifyAccount
-				 */
-				case 'domain':
-					$request = $this->api->call('modifyacct', array('user' => $args['package']['username'], 'domain' => $value));
-					if ( $request->result[0]->status != 1 )
-					{
-						$errors[] = $this->email_error('Domain Change', $request->result[0]->statusmsg, $args);
-					}
-					break;
-				
-				/**
-				 * Change IP Address
-				 * @link http://docs.cpanel.net/twiki/bin/view/AllDocumentation/AutomationIntegration/SetSiteIp
-				 */
-				case 'ip':
-					$request = $this->api->call('setsiteip', array('user' => $args['package']['username'], 'ip' => $value));
-					if ( $request->result[0]->status != 1 )
-					{
-						$errors[] = $this->email_error('IP Change', $request->result[0]->statusmsg, $args);
-					}
-					break;
-				/** TODO:
-				 * Change Package
-				 * @link http://docs.cpanel.net/twiki/bin/view/AllDocumentation/AutomationIntegration/ChangePackage
-				 */
-				case 'package':
-					if (!$this->CheckCpanelPlan($args['package']['name_on_server'], $args)) exit;
-
-					$request = $this->api->call('changepackage', array('user' => $args['package']['username'], 'pkg' => urlencode($args['package']['name_on_server'])));
-
-					if ( $request->result[0]->status != 1 )
-					{
-						$errors[] = $this->email_error('Plan Change', $request->result[0]->statusmsg, $args);
-					}
-					else
-					{
-						// setup or delete the reseller permissions if necessary
-						if ( isset($args['package']['is_reseller']) && $args['package']['is_reseller'] == 1 ) {
-							if ( !isset($args['changes']['leave_reseller']) ) {
-								$this->_addReseller($args);
-								$this->_setResellerACLs($args);
-							}
-						} else {
-							// If the old package was a reseller, we need to remove it.
-							if ( isset($args['changes']['remove_reseller']) && $args['changes']['remove_reseller'] == 1 )
-								$this->_removeReseller($args);
-						}
-					}
-					break;
-			}
-		}
-		
-		if ( count($errors) > 0 )
-		{
-			$this->logger->log(4, "plugin_cpanel::update::error: ".print_r($errors,true));
-			throw new Exception ( $errors[0] );
-		}
-		else
-		{
-			return;
-		}
-	}
-
-	function doDelete($args)
-	{
-		$userPackage = new UserPackage($args['userPackageId']);
-		$this->delete($this->buildParams($userPackage));
-		return $userPackage->getCustomField("Domain Name") . ' has been deleted.';
-	}
-	
-	/**
-	* Removes an account from the cPanel server.
-	* @link http://docs.cpanel.net/twiki/bin/view/AllDocumentation/AutomationIntegration/TerminateAccount
-	* @param <type> $args
-	* @return NE_Error
-	*/
-	function delete($args)
-	{
-		$this->setup($args);
-		$args = $this->updateArgs($args);
-		$request = $this->api->call('removeacct', array('user' => $args['package']['username']));
-
-		if ( $request->result[0]->status != 1 )
-		{
-			$error = $this->email_error ( 'Deletion', $request->result[0]->statusmsg, $args );
-		}
-
-		// Rather than returning an error object every time, just return it here.
-		// Need to check if an actual error exists to avoid returning an error object on a success message
-		if ( isset($error) )
-		{
-			$this->logger->log(4, "plugin_cpanel::delete::error: ".$error);
-			throw new Exception ( $error );
-		}
-		else
-		{
-			return;
-		}
-	}
-
-	function doSuspend($args)
-	{
-		$userPackage = new UserPackage($args['userPackageId']);
-		$this->suspend($this->buildParams($userPackage));
-		return $userPackage->getCustomField("Domain Name") . ' has been suspended.';
-	}
-	
-	/**
-	* Suspends an account.
-	* @link http://docs.cpanel.net/twiki/bin/view/AllDocumentation/AutomationIntegration/SuspendAccount
-	* @link http://docs.cpanel.net/twiki/bin/view/AllDocumentation/AutomationIntegration/SuspendReseller
-	* @param <type> $args
-	* @return NE_Error
-	*/
-	function suspend($args)
-	{
-		$this->setup($args);
-		$args = $this->updateArgs($args);
-		$action = ( isset($args['package']['is_reseller']) ) ? 'suspendreseller' : 'suspendacct';
-		$request = $this->api->call($action, array('user' => $args['package']['username']));
-
-		if ( $request->result[0]->status != 1 )
-		{
-			$error = $this->email_error( 'Suspension', $request->result[0]->statusmsg, $args );
-		}
-
-		// Rather than returning an error object every time, just return it here.
-		// Need to check if an actual error exists to avoid returning an error object on a success message
-		if ( isset($error) )
-		{
-			$this->logger->log(4, "plugin_cpanel::suspend::error: ".$error);
-			throw new Exception ( $error );
-		}
-		return;
-	}
-
-	function doUnSuspend($args)
-	{
-		$userPackage = new UserPackage($args['userPackageId']);
-		$this->unsuspend($this->buildParams($userPackage));
-		return $userPackage->getCustomField("Domain Name") . ' has been unsuspended.';
-	}
-	
-	/**
-	* Unsuspends an account
-	* @link http://docs.cpanel.net/twiki/bin/view/AllDocumentation/AutomationIntegration/UnsuspendAcount
-	* @link http://docs.cpanel.net/twiki/bin/view/AllDocumentation/AutomationIntegration/UnsuspendReseller
-	* @return NE_Error
-	*/
-	function unsuspend($args)
-	{
-		$this->setup($args);
-		$args = $this->updateArgs($args);
-		$action = ( isset($args['package']['is_reseller']) ) ? 'unsuspendreseller' : 'unsuspendacct';
-		$request = $this->api->call($action, array('user' => $args['package']['username']));
-
-		if ( $request->result[0]->status != 1 )
-		{
-			$error = $this->email_error ( 'Unsuspension', $request->result[0]->statusmsg, $args );
-		}
-
-		// Rather than returning an error object every time, just return it here.
-		// Need to check if an actual error exists to avoid returning an error object on a success message
-		if ( isset($error) )
-		{
-			$this->logger->log(4, "plugin_cpanel::unsuspend::error: ".$error);
-			throw new Exception ( $error );
-		}
-
-		return;
-	}
-
-    /**
-     * Tests that the account credentials are working.
-     * @link http://docs.cpanel.net/twiki/bin/view/AllDocumentation/AutomationIntegration/DisplaycPanelWHMVersion
-     * @param <type> $args
-     * @return NE_Error
-     */
-    function testLogin($args)
+    //plugin function called after account is activated
+    function doCreate($args)
     {
-	    $this->setup($args);
-	    $version = $this->api->version();
-
-	    $this->logger->log(4, 'Cpanel Version: '.$version);
-
-	    if ( strlen(trim($version)) == 0 )
-	    {
-		    return new Exception("Connection to server failed.");
-	    }
+        $userPackage = new UserPackage($args['userPackageId']);
+        $this->create($this->buildParams($userPackage));
+        return $userPackage->getCustomField("Domain Name") . ' has been created.';
     }
 
-	/**
-	 * Setup Reseller Account Creatin Limits
-	 * @link http://docs.cpanel.net/twiki/bin/view/AllDocumentation/AutomationIntegration/SetResellersACLList
-	 * @param <type> $args
-	 */
-	function _setResellerACLs($args)
-	{
-		$this->setup($args);
-		$args = $this->updateArgs($args);
-		// TODO: Verify that these are correct ACLs and what they do.
-		$resourceLimits = array('acl-rslimit-disk', 'acl-rsolimit-disk', 'acl-rslimit-bw', 'acl-rsolimit-bw', 'acl-domain-quota');
+    function create($args)
+    {
+        $this->setup($args);
+        $errors = array();
 
-                $acls = array();
-                if ( isset($args['package']['acl']['acl-name'])&& $args['package']['acl']['acl-name'] != '' ) {
-                    $this->logger->log(2, 'Using ACL Name: ' . $args['package']['acl']['acl-name']);
-                    $acls['acllist'] = $args['package']['acl']['acl-name'];
-                } else {
-                    foreach ( $args['package']['acl'] as $key => $value ) {
-                        if ( mb_substr ($key, 0, 4) == 'acl-' ) {
-                            if ( in_array($key, $resourceLimits) ) {
-                                $key = mb_substr($key, 4);
-                            }
-                            $acls[$key] = $value;
-                        }
-                    }
+        if ( $args['package']['name_on_server'] == null ) {
+            throw new Exception("Cpanel create method: This package is not tied to a Cpanel account");
+        }
 
-                    if ( (isset($args['package']['acl']['acl-rslimit-disk']) && $args['package']['acl']['acl-rslimit-disk']) || (isset($args['package']['acl']['acl-rslimit-bw']) && $args['package']['acl']['acl-rslimit-bw'])) {
-                        $acls['resreslimit'] = 1;
-                    }
+        // package add-ons handling
+        if ( isset($args['package']['addons']['DISKSPACE']) ) {
+            @$args['package']['acl']['acl-rslimit-disk'] += ((int)$args['package']['addons']['DISKSPACE']);
+        }
+        if ( isset($args['package']['addons']['BANDWIDTH']) ) {
+            @$args['package']['acl']['acl-rslimit-bw'] += ((int)$args['package']['addons']['BANDWIDTH']) * 1024; // Convert from Gigs to MB
+        }
+        if ( isset($args['package']['is_reseller']) && isset($args['package']['addons']['SSL']) && $args['package']['addons']['SSL'] == 1) {
+            $args['package']['acl']['acl-ssl'] = 1;
+        }
 
-                    // Only send ACLs that are set to 1.  Even if set to 0, cPanel still enables them.
-                    foreach ( $acls as $key => $value ) {
-                        if ( $value != '1' ) {
-                            unset($acls[$key]);
-                        }
-                        // This key is for domain quota, which is sent as a seperate API call (setresellerlimits).
-                        if ( $key == 'acl-domain-quota'  ) {
-                            unset($acls[$key]);
-                        }
-                    }
-                }
-                
-		$request = $this->api->call('setacls', array_merge(array('reseller' => $args['package']['username']), $acls));
+        // Checks if the plan exists.
+        if ( !$this->CheckCpanelPlan($args['package']['name_on_server'], $args) ) {
+            $error = "The package '{$args['package']['name_on_server']}' was not found on the server.";
+            $errors[] = $this->email_error('Creation', $error, $args );
+            throw new Exception($error);
+        }
 
-		if ( $request->result[0]->status != 1 ) {
-                    $error = $request->result[0]->statusmsg . ' setacls';
-                    $this->email_error ( 'Setup Reseller', $error, $args );
-		}
+        $params = array();
+        $params['username'] = $this->getBlueHostUsername($args);                     
+        $params['domain'] = $args['package']['domain_name'];
+        $params['plan'] = urlencode($args['package']['name_on_server']);
+        $params['password'] = $args['package']['password'];
+        $params['contactemail'] = $args['customer']['email'];
 
-                $tmpArgs = array();
-                
-		// Setup domain quota for the reseller
-		if ( (isset($args['package']['acl']['acl-domain-quota']) && $args['package']['acl']['acl-domain-quota'] > 0 ) )
-		{
-			$tmpArgs['enable_account_limit'] = 1;
-                        $tmpArgs['account_limit'] = $args['package']['acl']['acl-domain-quota']; 
-		}
-                
-                if ( (isset($args['package']['acl']['acl-rslimit-disk']) && $args['package']['acl']['acl-rslimit-disk']) || (isset($args['package']['acl']['acl-rslimit-bw']) && $args['package']['acl']['acl-rslimit-bw']))
-                {
-                    $tmpArgs['enable_resource_limits'] = 1; 
-                    $tmpArgs['bandwidth_limit'] = $args['package']['acl']['acl-rslimit-bw'];
-                    $tmpArgs['diskspace_limit'] = $args['package']['acl']['acl-rslimit-disk'];
-                                 
-                    if ( (isset($args['package']['acl']['acl-rsolimit-disk']) && $args['package']['acl']['acl-rsolimit-disk'] == 1) || isset($args['package']['acl']['rsolimit-bw']) && $args['package']['acl']['rsolimit-bw']  )
-                    {
-                        $tmpArgs['enable_overselling'] = 1;
-                        $tmpArgs['enable_overselling_bandwidth'] = $args['package']['acl']['acl-rsolimit-bw'];
-                        $tmpArgs['enable_overselling_diskspace'] = $args['package']['acl']['acl-rsolimit-disk'];
-                    }
-                }
-                
-                if ( count($tmpArgs) > 0 ) {
-                    $request = $this->api->call('setresellerlimits', array_merge(array('user' => $args['package']['username']), $tmpArgs));
-                    if ( $request->result[0]->status != 1 )
-                    {
-                        $error = $request->result[0]->statusmsg . ' setupresellerlimits';
-                        $this->email_error ( 'Setup Reseller Limits', $error, $args );
-                    }
-                }
+        $userPackage = new UserPackage($args['package']['id']);
+        $userPackage->setCustomField('User Name', $params['username']);
 
-		// Rather than returning an error object every time, just return it here.
-		// Need to check if an actual error exists to avoid returning an error object on a success message
-		if ( isset($error) )
-		{
-			$this->logger->log(4, "plugin_cpanel::setupreselleracls::error: ".$error);
-			throw new Exception ( $error );
-		}
-	}
+        $request = $this->api->call('createacct', $params);
 
-	/**
-	 * Add reseller privileges to an account.
-	 * @link http://docs.cpanel.net/twiki/bin/view/AllDocumentation/AutomationIntegration/AddResellerPrivileges
-	  * @param <type> $args
-	*/
-	function _addReseller($args)
-	{
-		$this->setup($args);
-		$args = $this->updateArgs($args);
-		$request = $this->api->call('setupreseller', array('user' => $args['package']['username'], 'makeowner' => '1'));
+        if ( $request->result[0]->status != 1 ) {
+            $errors[] = $this->email_error('Creation', $request->result[0]->statusmsg, $args);
+        }
+        else if ( $request->result[0]->status == 1 ) {
+            // setup the reseller permissions if necessary
+            if ( isset($args['package']['is_reseller']) && $args['package']['is_reseller']== 1 ) {
+                $this->_addReseller($args);
+                $this->_setResellerACLs($args);
+            }
+        }
+        else {
+            $errors[] = "Error connecting to cPanel server";
+        }
 
-		if ( $request->result[0]->status != 1 )
-		{
-			$error = $this->email_error ( 'Setup Reseller', $request->result[0]->statusmsg, $args );
-		}
+        if ( count($errors) > 0 ) {
+            $this->logger->log(4, "plugin_cpanel::create::error: ".print_r($errors,true));
+            throw new Exception ( $errors[0] );
+        }
+        return;
+    }
 
-		// Rather than returning an error object every time, just return it here.
-		// Need to check if an actual error exists to avoid returning an error object on a success message
-		if ( isset($error) )
-		{
-			$this->logger->log(4, "plugin_cpanel::setupreseller::error: ".$error);
-			throw new Exception ( $error );
-		}
-	}
-
-	/**
-	 * Remove reseller privileges from an account.
-	 * @link http://docs.cpanel.net/twiki/bin/view/AllDocumentation/AutomationIntegration/RemoveResellerPrivileges
-	 * @param <type> $args
-	 */
-	function _removeReseller($args)
-	{
-		$this->setup($args);
-		$request = $this->api->call('unsetupreseller', array('user' => $args['package']['username'], 'makeowner' => 1));
-
-		if ( $request->result[0]->status != 1 )
-		{
-			$error = $this->email_error ( 'Unsetup Reseller', $request->result[0]->statusmsg, $args );
-		}
-
-		// Rather than returning an error object every time, just return it here.
-		// Need to check if an actual error exists to avoid returning an error object on a success message
-		if ( isset($error) )
-		{
-			$this->logger->log(4, "plugin_cpanel::unsetupreseller::error: ".$error);
-			throw new Exception ( $error );
-		}
-	}
-
-	/**
-	* Updates any $args as needbe for the cPanel Plugin (usernames must be lowercase, etc)
-	*
-	* @param array $args
-	*
-	*/
-	private function updateArgs($args)
-	{
-		$args['package']['username'] = trim(strtolower($args['package']['username']));
-		if ( isset($args['changes']['username']) )
-			$args['changes']['username'] = trim(strtolower($args['changes']['username']));
-			
-		return $args;
-	}
+    function doUpdate($args)
+    {
+        $userPackage = new UserPackage($args['userPackageId']);
+        $this->update($this->buildParams($userPackage, $args));
+        return $userPackage->getCustomField("Domain Name") . ' has been updated.';
+    }
 	
-	function getAvailableActions($userPackage)
-	{
-		$args = $this->buildParams($userPackage);
-		$this->setup($args);
-                $args = $this->updateArgs($args);
-		$actions = array();	
-		try {
-			$request = $this->api->call('accountsummary', array('user' => $args['package']['username']));
-			$actions[] = 'Delete';
-			if ( $request->acct[0]->suspended == 1 ) {
-				$actions[] = 'UnSuspend';
-			} else {
-				$actions[] = 'Suspend';
-			}
-		} catch (Exception $e) {
-			$actions[] = 'Create';
-		}		
-		return $actions;
-	}
+    function update($args)
+    {
+        $this->setup($args);
+        $args = $this->updateArgs($args);
+        $errors = array();
+        // Loop over changes array
+        foreach ( $args['changes'] as $key => $value )  {
+            switch ( $key )  {        
+                case 'username':
+                    $request = $this->api->call('modifyacct', array('user' => $args['package']['username'], 'newuser' => $value));
+                    if ( $request->result[0]->status != 1 ) {
+                        $errors[] = $this->email_error('Username Change', $request->result[0]->statusmsg, $args);
+                    }
+                    // Internal fix, incase we are also changing the domain name.
+                    $args['package']['username'] = $value;
+                    break;
+
+
+                case 'password':
+                    $request = $this->api->call('passwd', array('user' => $args['package']['username'], 'pass' => urlencode($value)));
+                    // passwd has a different json struct.
+                    if ( $request->passwd[0]->status != 1 ) {
+                        $errors[] = $this->email_error('Password Change', $request->passwd[0]->statusmsg, $args);
+                    }
+                    break;
+
+                case 'domain':
+                    $request = $this->api->call('modifyacct', array('user' => $args['package']['username'], 'domain' => $value));
+                    if ( $request->result[0]->status != 1 ) {
+                        $errors[] = $this->email_error('Domain Change', $request->result[0]->statusmsg, $args);
+                    }
+                    break;
+
+                case 'ip':
+                    $request = $this->api->call('setsiteip', array('user' => $args['package']['username'], 'ip' => $value));
+                    if ( $request->result[0]->status != 1 ) {
+                        $errors[] = $this->email_error('IP Change', $request->result[0]->statusmsg, $args);
+                    }
+                    break;
+
+                case 'package':
+                    if ( !$this->CheckCpanelPlan($args['package']['name_on_server'], $args) ) {
+                        $error = "The package '{$args['package']['name_on_server']}' was not found on the server.";
+                        $errors[] = $this->email_error('Creation', $error, $args );
+                        throw new Exception($error);
+                    }
+
+                    $request = $this->api->call('changepackage', array('user' => $args['package']['username'], 'pkg' => urlencode($args['package']['name_on_server'])));
+                    if ( $request->result[0]->status != 1 ) {
+                        $errors[] = $this->email_error('Plan Change', $request->result[0]->statusmsg, $args);
+                    } else {
+                        // setup or delete the reseller permissions if necessary
+                        if ( isset($args['package']['is_reseller']) && $args['package']['is_reseller'] == 1 ) {
+                            if ( !isset($args['changes']['leave_reseller']) ) {
+                                $this->_addReseller($args);
+                                $this->_setResellerACLs($args);
+                            }
+                        } else {
+                            // If the old package was a reseller, we need to remove it.
+                            if ( isset($args['changes']['remove_reseller']) && $args['changes']['remove_reseller'] == 1 )
+                                $this->_removeReseller($args);
+                        }
+                    }
+                    break;
+            }
+        }
+
+        if ( count($errors) > 0 ) {
+            $this->logger->log(4, "plugin_cpanel::update::error: ".print_r($errors,true));
+            throw new Exception ( $errors[0] );
+        } 
+    }
+
+    function doDelete($args)
+    {
+        $userPackage = new UserPackage($args['userPackageId']);
+        $this->delete($this->buildParams($userPackage));
+        return $userPackage->getCustomField("Domain Name") . ' has been deleted.';
+    }
+    
+    function delete($args)
+    {
+        $this->setup($args);
+        $args = $this->updateArgs($args);
+        $request = $this->api->call('removeacct', array('user' => $args['package']['username']));
+
+        if ( $request->result[0]->status != 1 ) {
+            $error = $this->email_error ( 'Deletion', $request->result[0]->statusmsg, $args );
+        }
+
+        if ( isset($error) ) {
+            $this->logger->log(4, "plugin_cpanel::delete::error: ".$error);
+            throw new Exception ( $error );
+        }
+    }
+
+    function doSuspend($args)
+    {
+        $userPackage = new UserPackage($args['userPackageId']);
+        $this->suspend($this->buildParams($userPackage));
+        return $userPackage->getCustomField("Domain Name") . ' has been suspended.';
+    }
+
+    function suspend($args)
+    {
+        $this->setup($args);
+        $args = $this->updateArgs($args);
+        $action = ( isset($args['package']['is_reseller']) ) ? 'suspendreseller' : 'suspendacct';
+        $request = $this->api->call($action, array('user' => $args['package']['username']));
+
+        if ( $request->result[0]->status != 1 ) {
+            $error = $this->email_error( 'Suspension', $request->result[0]->statusmsg, $args );
+        }
+
+        if ( isset($error) ) {
+            $this->logger->log(4, "plugin_cpanel::suspend::error: ".$error);
+            throw new Exception ( $error );
+        }
+    }
+
+    function doUnSuspend($args)
+    {
+        $userPackage = new UserPackage($args['userPackageId']);
+        $this->unsuspend($this->buildParams($userPackage));
+        return $userPackage->getCustomField("Domain Name") . ' has been unsuspended.';
+    }
+
+    function unsuspend($args)
+    {
+        $this->setup($args);
+        $args = $this->updateArgs($args);
+        $action = ( isset($args['package']['is_reseller']) ) ? 'unsuspendreseller' : 'unsuspendacct';
+        $request = $this->api->call($action, array('user' => $args['package']['username']));
+
+        if ( $request->result[0]->status != 1 ) {
+            $error = $this->email_error ( 'Unsuspension', $request->result[0]->statusmsg, $args );
+        }
+
+        if ( isset($error) ) {
+            $this->logger->log(4, "plugin_cpanel::unsuspend::error: ".$error);
+            throw new Exception ( $error );
+        }
+    }
+
+    function testLogin($args)
+    {
+        $this->setup($args);
+        $version = $this->api->version();
+        $this->logger->log(4, 'Cpanel Version: '.$version);
+        if ( strlen(trim($version)) == 0 ) {
+            throw new Exception("Connection to server failed.");
+        }
+    }
+
+    function _setResellerACLs($args)
+    {
+        $this->setup($args);
+        $args = $this->updateArgs($args);
+        $resourceLimits = array('acl-rslimit-disk', 'acl-rsolimit-disk', 'acl-rslimit-bw', 'acl-rsolimit-bw', 'acl-domain-quota');
+
+        $acls = array();
+        if ( isset($args['package']['acl']['acl-name'])&& $args['package']['acl']['acl-name'] != '' ) {
+            $acls['acllist'] = $args['package']['acl']['acl-name'];
+        } else {
+            foreach ( $args['package']['acl'] as $key => $value ) {
+                if ( mb_substr ($key, 0, 4) == 'acl-' ) {
+                    if ( in_array($key, $resourceLimits) ) {
+                        $key = mb_substr($key, 4);
+                    }
+                    $acls[$key] = $value;
+                }
+            }
+            if ( (isset($args['package']['acl']['acl-rslimit-disk']) && $args['package']['acl']['acl-rslimit-disk']) || (isset($args['package']['acl']['acl-rslimit-bw']) && $args['package']['acl']['acl-rslimit-bw'])) {
+                $acls['resreslimit'] = 1;
+            }
+
+            // Only send ACLs that are set to 1.  Even if set to 0, cPanel still enables them.
+            foreach ( $acls as $key => $value ) {
+                if ( $value != '1' ) {
+                    unset($acls[$key]);
+                }
+                // This key is for domain quota, which is sent as a seperate API call (setresellerlimits).
+                if ( $key == 'acl-domain-quota'  ) {
+                    unset($acls[$key]);
+                }
+            }
+        }
+
+        $request = $this->api->call('setacls', array_merge(array('reseller' => $args['package']['username']), $acls));
+
+        if ( $request->result[0]->status != 1 ) {
+            $error = $request->result[0]->statusmsg . ' setacls';
+            $this->email_error ( 'Setup Reseller', $error, $args );
+        }
+
+        $tmpArgs = array();
+
+        // Setup domain quota for the reseller
+        if ( (isset($args['package']['acl']['acl-domain-quota']) && $args['package']['acl']['acl-domain-quota'] > 0 ) ) {
+            $tmpArgs['enable_account_limit'] = 1;
+            $tmpArgs['account_limit'] = $args['package']['acl']['acl-domain-quota']; 
+        }
+
+        if ( (isset($args['package']['acl']['acl-rslimit-disk']) && $args['package']['acl']['acl-rslimit-disk']) || (isset($args['package']['acl']['acl-rslimit-bw']) && $args['package']['acl']['acl-rslimit-bw'])) {
+            $tmpArgs['enable_resource_limits'] = 1; 
+            $tmpArgs['bandwidth_limit'] = $args['package']['acl']['acl-rslimit-bw'];
+            $tmpArgs['diskspace_limit'] = $args['package']['acl']['acl-rslimit-disk'];
+
+            if ( (isset($args['package']['acl']['acl-rsolimit-disk']) && $args['package']['acl']['acl-rsolimit-disk'] == 1) || isset($args['package']['acl']['rsolimit-bw']) && $args['package']['acl']['rsolimit-bw']  ) {
+                $tmpArgs['enable_overselling'] = 1;
+                $tmpArgs['enable_overselling_bandwidth'] = $args['package']['acl']['acl-rsolimit-bw'];
+                $tmpArgs['enable_overselling_diskspace'] = $args['package']['acl']['acl-rsolimit-disk'];
+            }
+        }
+
+        if ( count($tmpArgs) > 0 ) {
+            $request = $this->api->call('setresellerlimits', array_merge(array('user' => $args['package']['username']), $tmpArgs));
+            if ( $request->result[0]->status != 1 ) {
+                $error = $request->result[0]->statusmsg . ' setupresellerlimits';
+                $this->email_error ( 'Setup Reseller Limits', $error, $args );
+            }
+        }
+
+        if ( isset($error) ) {
+            $this->logger->log(4, "plugin_cpanel::setupreselleracls::error: ".$error);
+            throw new Exception ( $error );
+        }
+    }
+
+    function _addReseller($args)
+    {
+        $this->setup($args);
+        $args = $this->updateArgs($args);
+        $request = $this->api->call('setupreseller', array('user' => $args['package']['username'], 'makeowner' => '1'));
+
+        if ( $request->result[0]->status != 1 ) {
+            $error = $this->email_error ( 'Setup Reseller', $request->result[0]->statusmsg, $args );
+        }
+
+        if ( isset($error) ) {
+            $this->logger->log(4, "plugin_cpanel::setupreseller::error: ".$error);
+            throw new Exception ( $error );
+        }
+    }
+
+    function _removeReseller($args)
+    {
+        $this->setup($args);
+        $request = $this->api->call('unsetupreseller', array('user' => $args['package']['username'], 'makeowner' => 1));
+
+        if ( $request->result[0]->status != 1 ) {
+            $error = $this->email_error ( 'Unsetup Reseller', $request->result[0]->statusmsg, $args );
+        }
+
+        if ( isset($error) ) {
+            $this->logger->log(4, "plugin_cpanel::unsetupreseller::error: ".$error);
+            throw new Exception ( $error );
+        }
+    }
+
+    private function updateArgs($args)
+    {
+        $args['package']['username'] = trim(strtolower($args['package']['username']));
+        if ( isset($args['changes']['username']) )
+                $args['changes']['username'] = trim(strtolower($args['changes']['username']));
+
+        return $args;
+    }
+	
+    function getAvailableActions($userPackage)
+    {
+        $args = $this->buildParams($userPackage);
+        $this->setup($args);
+        $args = $this->updateArgs($args);
+        $actions = array();	
+        try {
+            $request = $this->api->call('accountsummary', array('user' => $args['package']['username']));
+            $actions[] = 'Delete';
+            if ( $request->acct[0]->suspended == 1 ) {
+                $actions[] = 'UnSuspend';
+            } else {
+                $actions[] = 'Suspend';
+            }
+        } catch (Exception $e) {
+            $actions[] = 'Create';
+        }		
+        return $actions;
+    }
+        
+    function getBlueHostUsername($args)
+    {
+        require_once('newedge/classes/NE_Network.php');
+        $url = "https://{$args['server']['variables']['ServerHostName']}:2087/get_resold_username/{$args['package']['domain_name']}";
+        $username = NE_Network::curlRequest($this->settings, $url, false, false, true);
+        return $username;            
+    }   
 }
-?>
