@@ -314,7 +314,7 @@ class PluginCpanel extends ServerPlugin
         }
 
         $params = array();
-        $params['username'] = $this->getBlueHostUsername($args);                     
+        $params['username'] = $this->getBlueHostUsername($args);
         $params['domain'] = $args['package']['domain_name'];
         $params['plan'] = urlencode($args['package']['name_on_server']);
         $params['password'] = $args['package']['password'];
@@ -358,18 +358,20 @@ class PluginCpanel extends ServerPlugin
         $this->setup($args);
         $args = $this->updateArgs($args);
         $errors = array();
+        $userPackage = new UserPackage($args['package']['id']);
         // Loop over changes array
         foreach ( $args['changes'] as $key => $value )  {
             switch ( $key )  {        
                 case 'username':
-                    $request = $this->api->call('modifyacct', array('user' => $args['package']['username'], 'newuser' => $value));
+                    $newUser = $this->getBlueHostUsername($args);
+                    $request = $this->api->call('modifyacct', array('user' => $args['package']['username'], 'newuser' => $newUser));
                     if ( $request->result[0]->status != 1 ) {
                         $errors[] = $this->email_error('Username Change', $request->result[0]->statusmsg, $args);
                     }
                     // Internal fix, incase we are also changing the domain name.
-                    $args['package']['username'] = $value;
+                    $args['package']['username'] = $newUser;
+                    $userPackage->setCustomField('User Name', $newUser);
                     break;
-
 
                 case 'password':
                     $request = $this->api->call('passwd', array('user' => $args['package']['username'], 'pass' => urlencode($value)));
@@ -383,7 +385,18 @@ class PluginCpanel extends ServerPlugin
                     $request = $this->api->call('modifyacct', array('user' => $args['package']['username'], 'domain' => $value));
                     if ( $request->result[0]->status != 1 ) {
                         $errors[] = $this->email_error('Domain Change', $request->result[0]->statusmsg, $args);
+                        break;
                     }
+                    $args['package']['domain_name'] = $value;
+
+                    // update username based on domain name
+                    $newUser = $this->getBlueHostUsername($args);
+                    $request = $this->api->call('modifyacct', array('user' => $args['package']['username'], 'newuser' => $newUser));
+                    if ( $request->result[0]->status != 1 ) {
+                        $errors[] = $this->email_error('Username Change', $request->result[0]->statusmsg, $args);
+                    }
+                    $args['package']['username'] = $newUser;
+                    $userPackage->setCustomField('User Name', $newUser);
                     break;
 
                 case 'ip':
