@@ -19,8 +19,6 @@ class CpanelApi
 	var $result;
 	var $request;
 	var $url;
-	var $logger;
-	var $loggerLevel = 4;
 
 	/**
 	 * Let's start her up!
@@ -52,7 +50,8 @@ class CpanelApi
 	{
 		if ( !function_exists('curl_init') )
 		{
-			throw new Exception('cURL is required in order to connect to cPanel');
+			CE_Lib::debug(1,'cURL is required in order to connect to cPanel');
+			throw new CE_Exception('cURL is required in order to connect to cPanel');
 		}
 
 		$this->url = $url = $this->schema . $this->host .':'. $this->port .'/json-api/' . $function . $this->build($params);
@@ -73,8 +72,8 @@ class CpanelApi
 
 		if ( $data === false )
 		{
-			$error = "Cpanel API Request / cURL Error: ".curl_error($ch);
-			$this->log($error);
+			$error = "Cpanel API Request (".$function.") / cURL Error: ".curl_error($ch);
+			CE_Lib::log(1,$error);
 			throw new Exception($error);
 		}
 
@@ -82,34 +81,30 @@ class CpanelApi
 
 		$this->request = array ( 'url' => $this->url, 'function' => $function, 'params' => $params, 'raw' => $data, 'json' => $result);
 
-		$this->log('cPanel API Request: '.print_r($this->request,true));
+		CE_Lib::log(3,'cPanel API Request: '.print_r($this->request,true));
 
 		if ( !is_object($result) )
 		{
-                    
-                    // invalid json... check raw for an SSL error
-                    if ( strpos($data, 'SSL encryption is required for access to this server') )
-                    {
-                        $this->logger->log(1, "Error from cPanel: SSL encryption is required for access to this server.");
-                        throw new Exception ('Error from cPanel: SSL encryption is required for access to this server.');
-                    }
-                    
-                    if ( is_object($this->logger) )
-                    {
-                        $this->logger->log(1, "Cpanel call method: Invalid JSON please check your connection");
-                    }
+            // invalid json... check raw for an SSL error
+            if ( strpos($data, 'SSL encryption is required for access to this server') )
+            {
+                CE_Lib::log(1, "Error from cPanel: SSL encryption is required for access to this server.");
+                throw new Exception ('Error from cPanel: SSL encryption is required for access to this server.');
+            }
 
-                    throw new Exception("Cpanel call method: Invalid JSON please check your connection");
+            throw new Exception("Cpanel call method: Invalid JSON please check your connection");
 		}
 		else if ( isset($result->data->result) && $result->data->result == 0 )
 		{
-			$this->log('cPanel Result: '.$result->data->reason);
-			throw new Exception("Cpanel returned an error: ".$result->data->reason);
+			throw new CE_Exception("Cpanel returned an error.  ".$result->data->reason);
 		}
 		else if ( isset($result->status) && $result->status == 0 )
 		{
-			$this->log('cPanel Status: '.$result->statusmsg);
-			throw new Exception("Cpanel returned an error: ".$result->statusmsg);
+			throw new CE_Exception("Cpanel returned an error.  ".$result->statusmsg);
+		}
+		else if ( isset($result->result) && (isset($result->result[0])) && $result->result[0]->status == 0 )
+		{
+			throw new CE_Exception("Cpanel returned an error.  ".$result->result[0]->statusmsg);
 		}
 
 		return $result;
@@ -199,29 +194,6 @@ class CpanelApi
 	{
 		$result = $this->call('version');
 		return $result->version;
-	}
-
-	/**
-	 * Sets up a logger for the API so that we can track our requests.
-	 * @param <NE_Observer> $logger $this->logger Object
-	 * @param <int> $level Level of logging for cPanel request. Default is level 4.
-	 */
-	public function setupLogger ( $logger, $level = 4)
-	{
-		$this->logger = $logger;
-		$this->loggerLevel = $level;
-	}
-
-	/**
-	 * Sets a message to be logged given setup logger object.
-	 * @param <mixed> $msg The message to send to the logger.
-	 */
-	public function log ( $msg )
-	{
-		if ( is_object($this->logger) )
-		{
-			$this->logger->log($this->loggerLevel, $msg);
-		}
 	}
 }
 

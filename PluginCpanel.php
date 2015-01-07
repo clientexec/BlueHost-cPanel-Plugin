@@ -1,6 +1,6 @@
 <?php
 
-require_once 'newedge/classes/NE_MailGateway.php';
+require_once 'library/CE/NE_MailGateway.php';
 require_once 'modules/admin/models/ServerPlugin.php';
 require_once dirname(__FILE__).'/CpanelApi.php';
 
@@ -13,51 +13,14 @@ require_once dirname(__FILE__).'/CpanelApi.php';
  */
 class PluginCpanel extends ServerPlugin
 {
-	var $api;
+    public $features = array(
+        'packageName' => true,
+        'testConnection' => true,
+        'showNameservers' => true,
+        'directlink' => true
+    );
 
-	/**
-	 * Sets up the CpanelApi object in order to make requests to the server.
-	 * @param <type> $args Standard set of arguments in order to make API request.
-	 */
-	public function setup ( $args )
-	{
-            if ( isset($args['server']['variables']['ServerHostName']) && isset($args['server']['variables']['plugin_cpanel_Username']) && isset($args['server']['variables']['plugin_cpanel_Access_Hash']) && isset($args['server']['variables']['plugin_cpanel_Use_SSL']) ) {	
-                $this->api = new CpanelApi($args['server']['variables']['ServerHostName'], $args['server']['variables']['plugin_cpanel_Username'], $args['server']['variables']['plugin_cpanel_Access_Hash'], $args['server']['variables']['plugin_cpanel_Use_SSL']);
-                $this->api->setupLogger ( $this->logger, 4);
-            } else {
-                throw new Exception('Missing Server Credentials: please fill out all information when editing the server.');
-            }
-	}
-
-	/**
-	 * Emails cPanel server errors.
-	 * @param String $name
-	 * @param String $message
-	 * @param Array $args
-	 * @return string
-	 */
-	function email_error ( $name, $message, $args )
-	{
-            $error = "cPanel Account ".$name." Failed. ";
-            $error .= "A email with the Details was sent to ". $args['server']['variables']['plugin_cpanel_Failure_E-mail'].'<br /><br />';
-
-            if ( is_array($message) ) {
-                $message = implode ( "\n", trim($message) );
-            }
-
-            $this->logger->log(1, 'cPanel Error: '.print_r(array('type' => $name, 'error' => $error, 'message' => $message, 'params' => $args), true));
-
-            if ( !empty($args['server']['variables']['plugin_cpanel_Failure_E-mail']) ) {
-                $mailGateway = new NE_MailGateway();
-                $mailGateway->mailMessageEmail( $message,
-                    $args['server']['variables']['plugin_cpanel_Failure_E-mail'],
-                    "Cpanel Plugin",
-                    $args['server']['variables']['plugin_cpanel_Failure_E-mail'],
-                    "",
-                    "Cpanel Account ".$name." Failure");
-            }
-            return $error.nl2br($message);
-	}
+    public $api;
 
 	function getVariables()
 	{
@@ -69,117 +32,183 @@ class PluginCpanel extends ServerPlugin
 	   */
 
         $variables = array (
-                   /*T*/"Name"/*/T*/ => array (
+                   lang("Name") => array (
                                         "type"=>"hidden",
                                         "description"=>"Used By CE to show plugin - must match how you call the action function names",
                                         "value"=>"CPanel"
                                        ),
-                   /*T*/"Description"/*/T*/ => array (
+                   lang("Description") => array (
                                         "type"=>"hidden",
-                                        "description"=>/*T*/"Description viewable by admin in server settings"/*/T*/,
-                                        "value"=>/*T*/"CPanel control panel integration"/*/T*/
+                                        "description"=>lang("Description viewable by admin in server settings"),
+                                        "value"=>lang("CPanel control panel integration")
                                        ),
-                   /*T*/"Username"/*/T*/ => array (
+                   lang("Username") => array (
                                         "type"=>"text",
-                                        "description"=>/*T*/"Username used to connect to server"/*/T*/,
+                                        "description"=>lang("Username used to connect to server"),
                                         "value"=>""
                                        ),
-                   /*T*/"Access Hash"/*/T*/ => array (
+                   lang("Access Hash") => array (
                                         "type"=>"textarea",
-                                        "description"=>/*T*/"Password used to connect to server"/*/T*/,
+                                        "description"=>lang("Password used to connect to server"),
                                         "value"=>"",
                                         "encryptable"=>true
                                        ),
-                   /*T*/"Use SSL"/*/T*/ => array (
+                   lang("Use SSL") => array (
                                         "type"=>"yesno",
-                                        "description"=>/*T*/"Set NO if you do not have PHP compiled with cURL.  YES if your PHP is compiled with cURL<br><b>NOTE:</b>It is suggested that you keep this as YES"/*/T*/,
+                                        "description"=>lang("Set NO if you do not have PHP compiled with cURL.  YES if your PHP is compiled with cURL<br><b>NOTE:</b>It is suggested that you keep this as YES"),
                                         "value"=>"1"
                                        ),
-                   /*T*/"Failure E-mail"/*/T*/ => array (
+                   lang("Failure E-mail") => array (
                                         "type"=>"text",
-                                        "description"=>/*T*/"E-mail address Cpanel error messages will be sent to"/*/T*/,
+                                        "description"=>lang("E-mail address Cpanel error messages will be sent to"),
                                         "value"=>""
                                         ),
-                   /*T*/"Actions"/*/T*/ => array (
+                   lang("Actions") => array (
                                         "type"=>"hidden",
-                                        "description"=>/*T*/"Current actions that are active for this plugin per server"/*/T*/,
+                                        "description"=>lang("Current actions that are active for this plugin per server"),
                                         "value"=>"Create,Delete,Suspend,UnSuspend"
                                        ),
-                    /*T*/'reseller'/*/T*/  => array(
+                    lang('reseller')  => array(
                                         'type'          => 'hidden',
-                                        'description'   => /*T*/'Whether this server plugin can set reseller accounts'/*/T*/,
+                                        'description'   => lang('Whether this server plugin can set reseller accounts'),
                                         'value'         => '1',
                                        ),
-                    /*T*/'reseller-fieldset'/*/T*/  => array(
+                    lang('reseller-fieldset')  => array(
                                         'type'          => 'fieldset',
                                         'name'          => 'reseller-fieldset',
-                                        'label'   => /*T*/'Reseller Account Specific Fields'/*/T*/,
-                                        'description'   => /*T*/''/*/T*/,
+                                        'label'   => lang('Reseller Account Specific Fields'),
+                                        'description'   => '',
                                         'value'         => '1',
                                        ),
-                    /*T*/'reseller_acl_fields'/*/T*/ => array(
+                    lang('reseller_acl_fields') => array(
                                         'type'          => 'hidden',
-                                        'description'   => /*T*/'ACL field for reseller account'/*/T*/,
+                                        'description'   => lang('ACL field for reseller account'),
                                         'value'         => array(
-                                                                array('name' => 'acl-name', 'type' => 'text', 'label' => 'Reseller ACL Name', 'description' => /*T*/'If you have a predefined ACL List in WHM you wish to use, enter it here.'/*/T*/, 'belongsto' => 'reseller-fieldset'),
-								array('name' => 'acl-rslimit-disk', 'type' => 'text', 'label' => 'Disk space in MB', 'description' => /*T*/'If you wish to set Disk space AND Bandwitdh as unlimited, leave this field empty.<br />if you wish to limit Bandwidth but not Disk Space, enter a very large number here'/*/T*/, 'belongsto' => 'reseller-fieldset'),
+                                array('name' => 'acl-name', 'type' => 'text', 'label' => 'Reseller ACL Name', 'description' => lang('If you have a predefined ACL List in WHM you wish to use, enter it here.'), 'belongsto' => 'reseller-fieldset'),
+								array('name' => 'acl-rslimit-disk', 'type' => 'text', 'label' => 'Disk space in MB', 'description' => lang('If you wish to set Disk space AND Bandwidth as unlimited, leave this field empty.  Note: If you wish to limit Bandwidth but not Disk Space, enter a very large number here'), 'belongsto' => 'reseller-fieldset'),
 								array('name' => 'acl-rsolimit-disk', 'type' => 'check', 'label' => 'Disk space overselling allowed' , 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-rslimit-bw', 'type' => 'text', 'label' => /*T*/'Bandwidth in MB'/*/T*/, 'description' => /*T*/'If you wish to set Disk space AND Bandwitdh as unlimited, leave this field empty.<br />if you wish to limit Disk Space but not Bandwidth, enter a very large number here'/*T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-rsolimit-bw', 'type' => 'check', 'label' => /*T*/'Bandwidth overselling allowed'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-domain-quota', 'type' => 'text', 'label' => /*T*/'Domain quota'/*/T*/, 'belongsto' => 'reseller-fieldset'  ),
-								array('name' => 'acl-list-accts', 'type' => 'check', 'label' => /*T*/'List Accounts'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-show-bandwidth', 'type' => 'check', 'label' => /*T*/'View Account Bandwidth Usage'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-create-acct', 'type' => 'check', 'label' => /*T*/'Account Creation'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-edit-account', 'type' => 'check', 'label' => /*T*/'Account Modification'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-suspend-acct', 'type' => 'check', 'label' => /*T*/'Account Suspension'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-kill-acct', 'type' => 'check', 'label' => /*T*/'Acccount Termination'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-upgrade-account', 'type' => 'check', 'label' => /*T*/'Account Upgrades'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-limit-bandwidth', 'type' => 'check', 'label' => /*T*/'Bandwidth Limiting Modification'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-edit-mx', 'type' => 'check', 'label' => /*T*/'Edit MX Entries'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-frontpage', 'type' => 'check', 'label' => /*T*/'Enabling/Disabling FrontPage Extensions'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-mod-subdomains', 'type' => 'check', 'label' => /*T*/'Enabling/Disabling SubDomains'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-passwd', 'type' => 'check', 'label' => /*T*/'Password Modification'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-quota', 'type' => 'check', 'label' => /*T*/'Quota Modification'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-res-cart', 'type' => 'check', 'label' => /*T*/'Reset Shopping Cart'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-ssl-gencrt', 'type' => 'check', 'label' => /*T*/'SSL CSR/CRT Generator'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-ssl', 'type' => 'check', 'label' => /*T*/'SSL Site Management'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-demo-setup', 'type' => 'check', 'label' => /*T*/'Turn an account into a demo account'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-rearrange-accts', 'type' => 'check', 'label' => /*T*/'Rearrange Accounts'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-clustering', 'type' => 'check', 'label' => /*T*/'Clustering'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-create-dns', 'type' => 'check', 'label' => /*T*/'Add DNS'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-edit-dns', 'type' => 'check', 'label' => /*T*/'Edit DNS'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-park-dns', 'type' => 'check', 'label' => /*T*/'Park DNS'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-kill-dns', 'type' => 'check', 'label' => /*T*/'Remove DNS'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-add-pkg', 'type' => 'check', 'label' => /*T*/'Add/Remove Packages'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-edit-pkg', 'type' => 'check', 'label' => /*T*/'Edit Packages'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-add-pkg-shell', 'type' => 'check', 'label' => /*T*/'Allow Creation of Packages With Shell Access'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-allow-unlimited-disk-pkgs', 'type' => 'check' , 'label' => /*T*/'Allow Creation of Packages with Unlimited Diskspace'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-allow-unlimited-pkgs', 'type' => 'check' , 'label' => /*T*/'Allow Creation of Packages with Unlimited Features'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-add-pkg-ip', 'type' => 'check', 'label' => /*T*/'Allow Creation of Packages With a Dedicated IP'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-allow-addoncreate', 'type' => 'check' , 'label' => /*T*/'Allow Creation of Packages with Addon Domains'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-allow-parkedcreate', 'type' => 'check', 'label' => /*T*/'Allow Creation of Packages With Parked Domains'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-onlyselfandglobalpkgs', 'type' => 'check' , 'label' => /*T*/'Allow creation of accounts with packages that are global or owned by this user'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-disallow-shell', 'type' => 'check', 'label' => /*T*/'Never allow creation of accounts with shell access'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-stats', 'type' => 'check', 'label' => /*T*/'View Account Statistics'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-status', 'type' => 'check', 'label' => /*T*/'View Server Status'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-restart', 'type' => 'check', 'label' => /*T*/'Restart Services'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-mailcheck', 'type' => 'check', 'label' => /*T*/'Mail Trouble Shooter'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-restftp', 'type' => 'check', 'label' => /*T*/'Resync Ftp Passwords'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
-								array('name' => 'acl-news', 'type' => 'check', 'label' => /*T*/'News Modification'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-rslimit-bw', 'type' => 'text', 'label' => lang('Bandwidth in MB'), 'description' => lang('If you wish to set Disk space AND Bandwidth as unlimited, leave this field empty.  Note: If you wish to limit Disk Space but not Bandwidth, enter a very large number here'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-rsolimit-bw', 'type' => 'check', 'label' => lang('Bandwidth overselling allowed'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-domain-quota', 'type' => 'text', 'label' => lang('Domain quota'), 'belongsto' => 'reseller-fieldset'  ),
+								array('name' => 'acl-list-accts', 'type' => 'check', 'label' => lang('List Accounts'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-show-bandwidth', 'type' => 'check', 'label' => lang('View Account Bandwidth Usage'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-create-acct', 'type' => 'check', 'label' => lang('Account Creation'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-edit-account', 'type' => 'check', 'label' => lang('Account Modification'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-suspend-acct', 'type' => 'check', 'label' => lang('Account Suspension'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-kill-acct', 'type' => 'check', 'label' => lang('Account Termination'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-upgrade-account', 'type' => 'check', 'label' => lang('Account Upgrades'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-limit-bandwidth', 'type' => 'check', 'label' => lang('Bandwidth Limiting Modification'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-edit-mx', 'type' => 'check', 'label' => lang('Edit MX Entries'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-frontpage', 'type' => 'check', 'label' => lang('Enabling/Disabling FrontPage Extensions'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-mod-subdomains', 'type' => 'check', 'label' => lang('Enabling/Disabling SubDomains'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-passwd', 'type' => 'check', 'label' => lang('Password Modification'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-quota', 'type' => 'check', 'label' => lang('Quota Modification'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-res-cart', 'type' => 'check', 'label' => lang('Reset Shopping Cart'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-ssl-gencrt', 'type' => 'check', 'label' => lang('SSL CSR/CRT Generator'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-ssl', 'type' => 'check', 'label' => lang('SSL Site Management'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-demo-setup', 'type' => 'check', 'label' => lang('Turn an account into a demo account'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-rearrange-accts', 'type' => 'check', 'label' => lang('Rearrange Accounts'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-clustering', 'type' => 'check', 'label' => lang('Clustering'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-create-dns', 'type' => 'check', 'label' => lang('Add DNS'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-edit-dns', 'type' => 'check', 'label' => lang('Edit DNS'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-park-dns', 'type' => 'check', 'label' => lang('Park DNS'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-kill-dns', 'type' => 'check', 'label' => lang('Remove DNS'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-add-pkg', 'type' => 'check', 'label' => lang('Add/Remove Packages'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-edit-pkg', 'type' => 'check', 'label' => lang('Edit Packages'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-add-pkg-shell', 'type' => 'check', 'label' => lang('Allow Creation of Packages With Shell Access'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-allow-unlimited-disk-pkgs', 'type' => 'check' , 'label' => lang('Allow Creation of Packages with Unlimited Diskspace'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-allow-unlimited-pkgs', 'type' => 'check' , 'label' => lang('Allow Creation of Packages with Unlimited Features'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-add-pkg-ip', 'type' => 'check', 'label' => lang('Allow Creation of Packages With a Dedicated IP'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-allow-addoncreate', 'type' => 'check' , 'label' => lang('Allow Creation of Packages with Addon Domains'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-allow-parkedcreate', 'type' => 'check', 'label' => lang('Allow Creation of Packages With Parked Domains'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-onlyselfandglobalpkgs', 'type' => 'check' , 'label' => lang('Allow creation of accounts with packages that are global or owned by this user'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-disallow-shell', 'type' => 'check', 'label' => lang('Never allow creation of accounts with shell access'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-stats', 'type' => 'check', 'label' => lang('View Account Statistics'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-status', 'type' => 'check', 'label' => lang('View Server Status'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-restart', 'type' => 'check', 'label' => lang('Restart Services'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-mailcheck', 'type' => 'check', 'label' => lang('Mail Trouble Shooter'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-restftp', 'type' => 'check', 'label' => lang('Resync Ftp Passwords'), 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-news', 'type' => 'check', 'label' => lang('News Modification'), 'belongsto' => 'reseller-fieldset' ),
 								// keep this one last because it's too powerful, and better think about users security
-								array('name' => 'acl-all', 'type' => 'check', 'label' => /*T*/'All Features (root access)'/*/T*/, 'belongsto' => 'reseller-fieldset' ),
+								array('name' => 'acl-all', 'type' => 'check', 'label' => lang('All Features (root access)'), 'belongsto' => 'reseller-fieldset' ),
                                                         ),
                                        ),
-            /*T*/'package_addons'/*/T*/ => array(
+            lang('package_addons') => array(
                                         'type'          => 'hidden',
-                                        'description'   => /*T*/'Supported signup addons variables'/*/T*/,
+                                        'description'   => lang('Supported signup addons variables'),
                                         'value'         => array(
                                                                 'DISKSPACE', 'BANDWIDTH', 'SSL'
                                                                 ),
                                        ),
+             lang('package_vars_values') => array(
+                'type'          => 'hidden',
+                'description'   => lang('Hosting account parameters'),
+                'value'         => array(
+                    'dkim' => array(
+                        'type'           => 'check',
+                        'label'          =>'Enable DKIM?',
+                        'description'    => lang('Enable DKIM on this account.'),
+                        'value'          => '0',
+                    ),
+                    'spf' => array(
+                        'type'           => 'check',
+                        'label'          =>'Enable SPF?',
+                        'description'    => lang('Enable SPF on this account.'),
+                        'value'          => '0',
+                    ),
+                )
+            )
 	   );
 	   return $variables;
 	}
+
+    /**
+     * Sets up the CpanelApi object in order to make requests to the server.
+     * @param <type> $args Standard set of arguments in order to make API request.
+     */
+    public function setup ( $args )
+    {
+        if ( isset($args['server']['variables']['ServerHostName']) && isset($args['server']['variables']['plugin_cpanel_Username']) && isset($args['server']['variables']['plugin_cpanel_Access_Hash']) && isset($args['server']['variables']['plugin_cpanel_Use_SSL']) ) {
+            $this->api = new CpanelApi($args['server']['variables']['ServerHostName'], $args['server']['variables']['plugin_cpanel_Username'], $args['server']['variables']['plugin_cpanel_Access_Hash'], $args['server']['variables']['plugin_cpanel_Use_SSL']);
+        } else {
+            throw new CE_Exception('Missing Server Credentials: please fill out all information when editing the server.');
+        }
+    }
+
+    /**
+     * Emails cPanel server errors.
+     * @param String $name
+     * @param String $message
+     * @param Array $args
+     * @return string
+     */
+    function email_error ( $name, $message, $args )
+    {
+        $error = "cPanel Account ".$name." Failed. ";
+        if (trim($args['server']['variables']['plugin_cpanel_Failure_E-mail'])) {
+          $error .= "An email with the Details was sent to ". $args['server']['variables']['plugin_cpanel_Failure_E-mail'].".\n";
+        }
+
+        if ( is_array($message) ) {
+            $message = implode ( "\n", trim($message) );
+        }
+
+        // remove access hash from e-mails
+        unset($args['server']['variables']['plugin_cpanel_Access_Hash']);
+
+        CE_Lib::log(1, 'cPanel Error: '.print_r(array('type' => $name, 'error' => $error, 'message' => $message, 'params' => $args), true));
+
+        if ( !empty($args['server']['variables']['plugin_cpanel_Failure_E-mail']) ) {
+            $mailGateway = new NE_MailGateway();
+            $mailGateway->mailMessageEmail( $message,
+                $args['server']['variables']['plugin_cpanel_Failure_E-mail'],
+                "Cpanel Plugin",
+                $args['server']['variables']['plugin_cpanel_Failure_E-mail'],
+                "",
+                "Cpanel Account ".$name." Failure");
+        }
+        return $error.nl2br($message);
+    }
 
     /**
      * Checks if a plan exists.
@@ -198,9 +227,24 @@ class PluginCpanel extends ServerPlugin
     }
 
     /**
+     * Show views that might be specific to this plugin.
+     * This content should be echoed out not returned
+     *
+     * @param UserPackage $user_package
+     * @param CE_Controller_Action $action
+     * @return html
+     */
+    public function show_publicviews($user_package, $action)
+    {
+        $action->view->addScriptPath(APPLICATION_PATH.'/../plugins/server/cpanel/');
+        $product_id = $action->getParam('id',FILTER_SANITIZE_NUMBER_INT);
+
+        echo $action->view->render('cpanel.phtml');
+    }
+
+    /**
      * Preps for account creation or update.
      * @param <type> $args
-     * @return NE_Error
      */
     function validateCredentials($args)
     {
@@ -232,17 +276,23 @@ class PluginCpanel extends ServerPlugin
             $args['package']['username'] = str_replace("-", "", $args['package']['username']);
             $errors[] = 'Domain username can\'t contain dashes';
         }
-        
+
         // Username cannot contain a space
         if (strpos($args['package']['username'], " ") !== false) {
             $args['package']['username'] = str_replace(" ", "", $args['package']['username']);
             $errors[] = 'Domain username can\'t contain spaces';
         }
-		
+
         // Username cannot contain an underscore (_)
         if (strpos($args['package']['username'], "_") !== false) {
             $args['package']['username'] = str_replace("_", "", $args['package']['username']);
             $errors[] = 'Domain username can\'t contain underscores';
+        }
+
+         // Username cannot contain a period (.)
+        if (strpos($args['package']['username'], ".") !== false) {
+            $args['package']['username'] = str_replace(".", "", $args['package']['username']);
+            $errors[] = 'Domain username can\'t contain periods';
         }
 
         // Username cannot be greater than 8 characters
@@ -271,8 +321,8 @@ class PluginCpanel extends ServerPlugin
         } else {
 
             if ( count($errors) > 0 ) {
-                $this->logger->log(4, "plugin_cpanel::validate::error: ".print_r($errors,true));
-                throw new Exception($errors[0]);
+                CE_Lib::log(4, "plugin_cpanel::validate::error: ".print_r($errors,true));
+                throw new CE_Exception($errors[0]);
             }
             return $args['package']['username'];
         }
@@ -292,7 +342,7 @@ class PluginCpanel extends ServerPlugin
         $errors = array();
 
         if ( $args['package']['name_on_server'] == null ) {
-            throw new Exception("Cpanel create method: This package is not tied to a Cpanel account");
+            throw new CE_Exception("This package is not configured properly.  Missing 'Package Name on Server'.");
         }
 
         // package add-ons handling
@@ -310,7 +360,7 @@ class PluginCpanel extends ServerPlugin
         if ( !$this->CheckCpanelPlan($args['package']['name_on_server'], $args) ) {
             $error = "The package '{$args['package']['name_on_server']}' was not found on the server.";
             $errors[] = $this->email_error('Creation', $error, $args );
-            throw new Exception($error);
+            throw new CE_Exception($error);
         }
 
         $params = array();
@@ -319,9 +369,23 @@ class PluginCpanel extends ServerPlugin
         $params['plan'] = urlencode($args['package']['name_on_server']);
         $params['password'] = $args['package']['password'];
         $params['contactemail'] = $args['customer']['email'];
+        $params['dkim'] = 0;
+        if ( isset($args['package']['variables']['dkim']) && $args['package']['variables']['dkim'] == 1 ) {
+            $params['dkim'] = 1;
+        }
+        $params['spf'] = 0;
+        if ( isset($args['package']['variables']['spf']) && $args['package']['variables']['spf'] == 1 ) {
+            $params['spf'] = 1;
+        }
 
         $userPackage = new UserPackage($args['package']['id']);
         $userPackage->setCustomField('User Name', $params['username']);
+
+        // Check if we need to set a dedicated IP
+        if ( $userPackage->getCustomField('Shared') == '0' ) {
+            $params['ip'] = 'yes';
+            $params['customip'] = $args['package']['ip'];
+        }
 
         $request = $this->api->call('createacct', $params);
 
@@ -340,8 +404,8 @@ class PluginCpanel extends ServerPlugin
         }
 
         if ( count($errors) > 0 ) {
-            $this->logger->log(4, "plugin_cpanel::create::error: ".print_r($errors,true));
-            throw new Exception ( $errors[0] );
+            CE_Lib::log(4, "plugin_cpanel::create::error: ".print_r($errors,true));
+            throw new CE_Exception ( $errors[0] );
         }
         return;
     }
@@ -352,16 +416,16 @@ class PluginCpanel extends ServerPlugin
         $this->update($this->buildParams($userPackage, $args));
         return $userPackage->getCustomField("Domain Name") . ' has been updated.';
     }
-	
+
     function update($args)
     {
         $this->setup($args);
         $args = $this->updateArgs($args);
+		$userPackage = new UserPackage($args['package']['id']);
         $errors = array();
-        $userPackage = new UserPackage($args['package']['id']);
         // Loop over changes array
         foreach ( $args['changes'] as $key => $value )  {
-            switch ( $key )  {        
+            switch ( $key )  {
                 case 'username':
                     $newUser = $this->getBlueHostUsername($args);
                     $request = $this->api->call('modifyacct', array('user' => $args['package']['username'], 'newuser' => $newUser));
@@ -370,11 +434,12 @@ class PluginCpanel extends ServerPlugin
                     }
                     // Internal fix, incase we are also changing the domain name.
                     $args['package']['username'] = $newUser;
-                    $userPackage->setCustomField('User Name', $newUser);
+					$userPackage->setCustomField('User Name', $newUser);
                     break;
 
+
                 case 'password':
-                    $request = $this->api->call('passwd', array('user' => $args['package']['username'], 'pass' => urlencode($value)));
+                    $request = $this->api->call('passwd', array('user' => $args['package']['username'], 'pass' => $value));
                     // passwd has a different json struct.
                     if ( $request->passwd[0]->status != 1 ) {
                         $errors[] = $this->email_error('Password Change', $request->passwd[0]->statusmsg, $args);
@@ -385,7 +450,7 @@ class PluginCpanel extends ServerPlugin
                     $request = $this->api->call('modifyacct', array('user' => $args['package']['username'], 'domain' => $value));
                     if ( $request->result[0]->status != 1 ) {
                         $errors[] = $this->email_error('Domain Change', $request->result[0]->statusmsg, $args);
-                        break;
+						break;
                     }
                     $args['package']['domain_name'] = $value;
 
@@ -395,8 +460,9 @@ class PluginCpanel extends ServerPlugin
                     if ( $request->result[0]->status != 1 ) {
                         $errors[] = $this->email_error('Username Change', $request->result[0]->statusmsg, $args);
                     }
-                    $args['package']['username'] = $newUser;
-                    $userPackage->setCustomField('User Name', $newUser);
+                    $args['package']['domain_name'] = $value;
+					$args['package']['username'] = $newUser;
+					$userPackage->setCustomField('User Name', $newUser);
                     break;
 
                 case 'ip':
@@ -410,7 +476,7 @@ class PluginCpanel extends ServerPlugin
                     if ( !$this->CheckCpanelPlan($args['package']['name_on_server'], $args) ) {
                         $error = "The package '{$args['package']['name_on_server']}' was not found on the server.";
                         $errors[] = $this->email_error('Creation', $error, $args );
-                        throw new Exception($error);
+                        throw new CE_Exception($error);
                     }
 
                     $request = $this->api->call('changepackage', array('user' => $args['package']['username'], 'pkg' => urlencode($args['package']['name_on_server'])));
@@ -434,9 +500,9 @@ class PluginCpanel extends ServerPlugin
         }
 
         if ( count($errors) > 0 ) {
-            $this->logger->log(4, "plugin_cpanel::update::error: ".print_r($errors,true));
-            throw new Exception ( $errors[0] );
-        } 
+            CE_Lib::log(4, "plugin_cpanel::update::error: ".print_r($errors,true));
+            throw new CE_Exception ( $errors[0] );
+        }
     }
 
     function doDelete($args)
@@ -445,7 +511,7 @@ class PluginCpanel extends ServerPlugin
         $this->delete($this->buildParams($userPackage));
         return $userPackage->getCustomField("Domain Name") . ' has been deleted.';
     }
-    
+
     function delete($args)
     {
         $this->setup($args);
@@ -457,8 +523,8 @@ class PluginCpanel extends ServerPlugin
         }
 
         if ( isset($error) ) {
-            $this->logger->log(4, "plugin_cpanel::delete::error: ".$error);
-            throw new Exception ( $error );
+            CE_Lib::log(4, "plugin_cpanel::delete::error: ".$error);
+            throw new CE_Exception ( $error );
         }
     }
 
@@ -481,8 +547,8 @@ class PluginCpanel extends ServerPlugin
         }
 
         if ( isset($error) ) {
-            $this->logger->log(4, "plugin_cpanel::suspend::error: ".$error);
-            throw new Exception ( $error );
+            CE_Lib::log(4, "plugin_cpanel::suspend::error: ".$error);
+            throw new CE_Exception ( $error );
         }
     }
 
@@ -505,18 +571,18 @@ class PluginCpanel extends ServerPlugin
         }
 
         if ( isset($error) ) {
-            $this->logger->log(4, "plugin_cpanel::unsuspend::error: ".$error);
-            throw new Exception ( $error );
+            CE_Lib::log(4, "plugin_cpanel::unsuspend::error: ".$error);
+            throw new CE_Exception ( $error );
         }
     }
 
-    function testLogin($args)
+    function testConnection($args)
     {
+        CE_Lib::log(4, 'Testing connection to cPanel server');
         $this->setup($args);
         $version = $this->api->version();
-        $this->logger->log(4, 'Cpanel Version: '.$version);
         if ( strlen(trim($version)) == 0 ) {
-            throw new Exception("Connection to server failed.");
+            throw new CE_Exception("Connection to server failed.");
         }
     }
 
@@ -566,11 +632,11 @@ class PluginCpanel extends ServerPlugin
         // Setup domain quota for the reseller
         if ( (isset($args['package']['acl']['acl-domain-quota']) && $args['package']['acl']['acl-domain-quota'] > 0 ) ) {
             $tmpArgs['enable_account_limit'] = 1;
-            $tmpArgs['account_limit'] = $args['package']['acl']['acl-domain-quota']; 
+            $tmpArgs['account_limit'] = $args['package']['acl']['acl-domain-quota'];
         }
 
         if ( (isset($args['package']['acl']['acl-rslimit-disk']) && $args['package']['acl']['acl-rslimit-disk']) || (isset($args['package']['acl']['acl-rslimit-bw']) && $args['package']['acl']['acl-rslimit-bw'])) {
-            $tmpArgs['enable_resource_limits'] = 1; 
+            $tmpArgs['enable_resource_limits'] = 1;
             $tmpArgs['bandwidth_limit'] = $args['package']['acl']['acl-rslimit-bw'];
             $tmpArgs['diskspace_limit'] = $args['package']['acl']['acl-rslimit-disk'];
 
@@ -590,8 +656,8 @@ class PluginCpanel extends ServerPlugin
         }
 
         if ( isset($error) ) {
-            $this->logger->log(4, "plugin_cpanel::setupreselleracls::error: ".$error);
-            throw new Exception ( $error );
+            CE_Lib::log(4, "plugin_cpanel::setupreselleracls::error: ".$error);
+            throw new CE_Exception ( $error );
         }
     }
 
@@ -606,8 +672,8 @@ class PluginCpanel extends ServerPlugin
         }
 
         if ( isset($error) ) {
-            $this->logger->log(4, "plugin_cpanel::setupreseller::error: ".$error);
-            throw new Exception ( $error );
+            CE_Lib::log(4, "plugin_cpanel::setupreseller::error: ".$error);
+            throw new CE_Exception ( $error );
         }
     }
 
@@ -621,8 +687,8 @@ class PluginCpanel extends ServerPlugin
         }
 
         if ( isset($error) ) {
-            $this->logger->log(4, "plugin_cpanel::unsetupreseller::error: ".$error);
-            throw new Exception ( $error );
+            CE_Lib::log(4, "plugin_cpanel::unsetupreseller::error: ".$error);
+            throw new CE_Exception ( $error );
         }
     }
 
@@ -634,13 +700,13 @@ class PluginCpanel extends ServerPlugin
 
         return $args;
     }
-	
+
     function getAvailableActions($userPackage)
     {
         $args = $this->buildParams($userPackage);
         $this->setup($args);
         $args = $this->updateArgs($args);
-        $actions = array();	
+        $actions = array();
         try {
             $request = $this->api->call('accountsummary', array('user' => $args['package']['username']));
             $actions[] = 'Delete';
@@ -651,13 +717,32 @@ class PluginCpanel extends ServerPlugin
             }
         } catch (Exception $e) {
             $actions[] = 'Create';
-        }		
+        }
         return $actions;
     }
-        
-    function getBlueHostUsername($args)
+
+    function getDirectLink($userPackage)
     {
-        require_once('newedge/classes/NE_Network.php');
+        $args = $this->buildParams($userPackage);
+
+        $schema = ( $args['server']['variables']['plugin_cpanel_Use_SSL'] == true ) ? 'https://' : 'http://';
+        $host = $args['server']['variables']['ServerHostName'];
+        $port = ( $args['server']['variables']['plugin_cpanel_Use_SSL'] == true ) ? 2083 : 2082;
+        $this->view->serverURL = $schema . $host .':'. $port .'/login/';
+        $this->view->username = $args['package']['username'];
+        $this->view->password = $args['package']['password'];
+        $this->view->packageId = $userPackage->id;
+        $form = $this->view->render('login.phtml');
+
+        return array(
+            'link' => '<li><a href="#" onclick="$(\'#direct-link-form-cpanel-' . $userPackage->id . '\').submit(); return false">' . $this->user->lang('Login to cPanel') . '</a></li>',
+            'form' => $form
+        );
+    }
+	
+	function getBlueHostUsername($args)
+    {
+        require_once 'library/CE/NE_Network.php';
         $url = "https://{$args['server']['variables']['ServerHostName']}:2087/get_resold_username/{$args['package']['domain_name']}";
         $username = NE_Network::curlRequest($this->settings, $url, false, false, true);
         return $username;            
