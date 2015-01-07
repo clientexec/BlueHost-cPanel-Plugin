@@ -367,7 +367,7 @@ class PluginCpanel extends ServerPlugin
         $params['username'] = $this->getBlueHostUsername($args);
         $params['domain'] = $args['package']['domain_name'];
         $params['plan'] = urlencode($args['package']['name_on_server']);
-        $params['password'] = $args['package']['password'];
+        $params['password'] = urlencode($args['package']['password']);
         $params['contactemail'] = $args['customer']['email'];
         $params['dkim'] = 0;
         if ( isset($args['package']['variables']['dkim']) && $args['package']['variables']['dkim'] == 1 ) {
